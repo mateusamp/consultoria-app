@@ -14,11 +14,10 @@ _FINLIB_TARGET = "/tmp/finlib_packages"
 def install_finlib():
     """Install finlib from private GitHub repo if not already installed.
 
-    Installs to /tmp/finlib_packages to avoid permission issues on Streamlit
-    Cloud where the venv site-packages directory is not writable at runtime.
-    Uses no Streamlit rendering commands so it can run before st.set_page_config.
+    Installs to /tmp/finlib_packages with --no-deps (transitive deps like
+    pandas are already in the venv via requirements.txt) to avoid shadowing
+    venv packages. Uses --upgrade so reinstalls on cold starts work cleanly.
     """
-    # Ensure target dir is on sys.path so finlib is importable after install
     if _FINLIB_TARGET not in sys.path:
         sys.path.insert(0, _FINLIB_TARGET)
 
@@ -28,6 +27,7 @@ def install_finlib():
     except ImportError:
         pass
 
+    import importlib
     import streamlit as st
 
     token = st.secrets.get("GITHUB_TOKEN", "")
@@ -41,11 +41,16 @@ def install_finlib():
         [
             sys.executable, "-m", "pip", "install",
             "--target", _FINLIB_TARGET,
+            "--no-deps",
+            "--upgrade",
             f"git+https://{token}@github.com/mateusamp/finlib.git",
         ],
         stdout=subprocess.DEVNULL,
     )
-    st.rerun()
+    # Clear cached import failures so Python finds the newly installed package
+    sys.modules.pop("finlib", None)
+    importlib.invalidate_caches()
+    import finlib  # noqa: F401
 
 
 def check_auth():
