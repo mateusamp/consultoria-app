@@ -4,34 +4,48 @@ Startup module for Consultoria App.
 Handles private dependency installation and authentication.
 Must be imported before any modules that depend on finlib.
 """
+import os
 import subprocess
 import sys
+
+_FINLIB_TARGET = "/tmp/finlib_packages"
 
 
 def install_finlib():
     """Install finlib from private GitHub repo if not already installed.
 
+    Installs to /tmp/finlib_packages to avoid permission issues on Streamlit
+    Cloud where the venv site-packages directory is not writable at runtime.
     Uses no Streamlit rendering commands so it can run before st.set_page_config.
     """
+    # Ensure target dir is on sys.path so finlib is importable after install
+    if _FINLIB_TARGET not in sys.path:
+        sys.path.insert(0, _FINLIB_TARGET)
+
     try:
         import finlib  # noqa: F401
+        return
     except ImportError:
-        import streamlit as st
+        pass
 
-        token = st.secrets.get("GITHUB_TOKEN", "")
-        if not token:
-            raise RuntimeError(
-                "GITHUB_TOKEN not found in Streamlit secrets. "
-                "Cannot install finlib."
-            )
-        subprocess.check_call(
-            [
-                sys.executable, "-m", "pip", "install",
-                f"git+https://{token}@github.com/mateusamp/finlib.git",
-            ],
-            stdout=subprocess.DEVNULL,
+    import streamlit as st
+
+    token = st.secrets.get("GITHUB_TOKEN", "")
+    if not token:
+        raise RuntimeError(
+            "GITHUB_TOKEN not found in Streamlit secrets. "
+            "Cannot install finlib."
         )
-        st.rerun()
+    os.makedirs(_FINLIB_TARGET, exist_ok=True)
+    subprocess.check_call(
+        [
+            sys.executable, "-m", "pip", "install",
+            "--target", _FINLIB_TARGET,
+            f"git+https://{token}@github.com/mateusamp/finlib.git",
+        ],
+        stdout=subprocess.DEVNULL,
+    )
+    st.rerun()
 
 
 def check_auth():
