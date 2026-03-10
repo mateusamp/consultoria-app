@@ -640,7 +640,10 @@ class PositionsFetcher:
             Standardized positions
         """
         if not _self.xp_client:
-            _self.xp_client = XPAPIClient()
+            _self.xp_client = XPAPIClient(
+                client_id=st.secrets.get("XP_CLIENT_ID"),
+                client_secret=st.secrets.get("XP_CLIENT_SECRET"),
+            )
             _self.xp_client.authenticate()
         
         try:
@@ -665,7 +668,10 @@ class PositionsFetcher:
             Standardized positions
         """
         if not _self.btg_client:
-            _self.btg_client = BTGAPIClient()
+            _self.btg_client = BTGAPIClient(
+                client_id=st.secrets.get("BTG_CLIENT_ID"),
+                client_secret=st.secrets.get("BTG_CLIENT_SECRET"),
+            )
         
         try:
             position = _self.btg_client.get_account_position(account_number)
